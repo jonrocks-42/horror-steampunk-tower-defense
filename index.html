@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cogsworth's Nightmare - Horror Steampunk Tower Defense</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui">
+            <div id="topBar">
+                <div id="waveInfo">Wave: <span id="waveNumber">1</span></div>
+                <div id="resourceInfo">
+                    <span>Gears: <span id="gearCount">100</span></span>
+                    <span>Steam: <span id="steamCount">50</span></span>
+                </div>
+                <div id="healthInfo">Lives: <span id="lives">20</span></div>
+            </div>
+            <div id="towerMenu">
+                <h3>Towers</h3>
+                <button id="tower-gun" class="tower-btn" data-tower="gun">Gun Turret</button>
+                <button id="tower-tesla" class="tower-btn" data-tower="tesla">Tesla Coil</button>
+                <button id="tower-spike" class="tower-btn" data-tower="spike">Spike Trap</button>
+            </div>
+            <div id="gameOverScreen" class="hidden">
+                <div class="modal">
+                    <h2 id="gameOverTitle">Game Over</h2>
+                    <p id="gameOverStats"></p>
+                    <button id="restartBtn">Play Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
