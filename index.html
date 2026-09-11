@@ -11,18 +11,59 @@
         <canvas id="gameCanvas"></canvas>
         <div id="ui">
             <div id="topBar">
+                <div id="scoreInfo">Score: <span id="score">0</span></div>
                 <div id="waveInfo">Wave: <span id="waveNumber">1</span></div>
                 <div id="resourceInfo">
-                    <span>Gears: <span id="gearCount">100</span></span>
-                    <span>Steam: <span id="steamCount">50</span></span>
+                    <div>⚙ Gears: <span id="gearCount">100</span></div>
+                    <div>💨 Steam: <span id="steamCount">50</span></div>
                 </div>
-                <div id="healthInfo">Lives: <span id="lives">20</span></div>
+                <div id="healthInfo">❤ Lives: <span id="lives">20</span></div>
             </div>
             <div id="towerMenu">
                 <h3>Towers</h3>
-                <button id="tower-gun" class="tower-btn" data-tower="gun">Gun Turret</button>
-                <button id="tower-tesla" class="tower-btn" data-tower="tesla">Tesla Coil</button>
-                <button id="tower-spike" class="tower-btn" data-tower="spike">Spike Trap</button>
+                <button id="tower-gun" class="tower-btn" data-tower="tower-gun">
+                    <div class="tower-icon">⚙</div>
+                    <div class="tower-name">Gun Turret</div>
+                    <div class="tower-cost">50 Gears</div>
+                    <div class="tower-stats">Dmg: 15 | Rng: 120</div>
+                </button>
+                <button id="tower-tesla" class="tower-btn" data-tower="tower-tesla">
+                    <div class="tower-icon">⚡</div>
+                    <div class="tower-name">Tesla Coil</div>
+                    <div class="tower-cost">75 Gears</div>
+                    <div class="tower-stats">Dmg: 10 | Rng: 150</div>
+                </button>
+                <button id="tower-spike" class="tower-btn" data-tower="tower-spike">
+                    <div class="tower-icon">▲</div>
+                    <div class="tower-name">Spike Trap</div>
+                    <div class="tower-cost">40 Gears</div>
+                    <div class="tower-stats">Dmg: 25 | Rng: 80</div>
+                </button>
+            </div>
+            <div id="towerStats">
+                <h3>Enemy Types</h3>
+                <div class="enemy-info">
+                    <div class="enemy-type">
+                        <span class="enemy-color" style="background: #DC143C;"></span>
+                        <span>Basic: 30HP</span>
+                    </div>
+                    <div class="enemy-type">
+                        <span class="enemy-color" style="background: #8B0000;"></span>
+                        <span>Armored: 60HP</span>
+                    </div>
+                    <div class="enemy-type">
+                        <span class="enemy-color" style="background: #FF6347;"></span>
+                        <span>Fast: 20HP</span>
+                    </div>
+                    <div class="enemy-type">
+                        <span class="enemy-color" style="background: #4B0000;"></span>
+                        <span>Elite: 90HP</span>
+                    </div>
+                    <div class="enemy-type">
+                        <span class="enemy-color" style="background: #DC143C;"></span>
+                        <span>Spectral: 25HP</span>
+                    </div>
+                </div>
             </div>
             <div id="gameOverScreen" class="hidden">
                 <div class="modal">
