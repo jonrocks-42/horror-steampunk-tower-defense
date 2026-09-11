@@ -1,4 +1,4 @@
-// Cogsworth's Nightmare - Enhanced Horror Steampunk Tower Defense Game
+// Cogsworth's Nightmare - ULTRA-DETAILED Horror Steampunk Tower Defense
 
 class Vector2 {
     constructor(x, y) {
@@ -20,62 +20,125 @@ class Vector2 {
     }
 }
 
+// Enhanced particle system
 class Particle {
-    constructor(x, y, vx, vy, color, life = 30) {
+    constructor(x, y, vx, vy, color, life = 30, type = 'normal') {
         this.position = new Vector2(x, y);
         this.velocity = new Vector2(vx, vy);
         this.color = color;
         this.life = life;
         this.maxLife = life;
         this.size = 3;
+        this.type = type; // 'normal', 'spark', 'smoke', 'blood'
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.1;
     }
 
     update() {
         this.position.x += this.velocity.x;
         this.position.y += this.velocity.y;
+        this.velocity.x *= 0.98; // friction
+        this.velocity.y *= 0.98;
+        this.velocity.y += 0.1; // gravity
+        this.life--;
+        this.rotation += this.rotationSpeed;
+        return this.life > 0;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.position.x, this.position.y);
+        ctx.rotate(this.rotation);
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+
+        if (this.type === 'spark') {
+            ctx.beginPath();
+            ctx.moveTo(-this.size * 1.5, 0);
+            ctx.lineTo(this.size * 1.5, 0);
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        } else if (this.type === 'smoke') {
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (this.type === 'blood') {
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+        ctx.restore();
+    }
+}
+
+// Floating damage number
+class DamageNumber {
+    constructor(x, y, damage, isCritical = false) {
+        this.position = new Vector2(x, y);
+        this.damage = damage;
+        this.isCritical = isCritical;
+        this.life = 60;
+        this.maxLife = 60;
+    }
+
+    update() {
+        this.position.y -= 1;
         this.life--;
         return this.life > 0;
     }
 
     draw(ctx) {
-        ctx.fillStyle = this.color;
+        ctx.save();
+        ctx.font = this.isCritical ? 'bold 16px Courier New' : 'bold 12px Courier New';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = this.isCritical ? '#FFD700' : '#DC143C';
         ctx.globalAlpha = this.life / this.maxLife;
-        ctx.beginPath();
-        ctx.arc(this.position.x, this.position.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillText(this.damage, this.position.x, this.position.y);
         ctx.globalAlpha = 1;
+        ctx.restore();
     }
 }
 
+// Advanced enemy system
 class Enemy {
-    constructor(path, type = 'basic') {
+    constructor(path, type = 'basic', waveNumber = 1) {
         this.path = path;
         this.pathIndex = 0;
         this.position = new Vector2(path[0].x, path[0].y);
         this.type = type;
+        this.waveNumber = waveNumber;
         
-        // Enhanced enemy properties
         const stats = {
-            basic: { health: 30, speed: 1, radius: 8, color: '#DC143C', armor: 0, bounty: 10 },
-            armored: { health: 60, speed: 0.5, radius: 12, color: '#8B0000', armor: 5, bounty: 25 },
-            fast: { health: 20, speed: 1.8, radius: 6, color: '#FF6347', armor: 0, bounty: 15 },
-            elite: { health: 90, speed: 0.7, radius: 14, color: '#4B0000', armor: 8, bounty: 50 },
-            spectral: { health: 25, speed: 1.2, radius: 7, color: '#DC143C', armor: 0, bounty: 20 }
+            basic: { health: 30, speed: 1, radius: 8, color: '#DC143C', armor: 0, bounty: 10, description: 'Basic' },
+            armored: { health: 60, speed: 0.5, radius: 12, color: '#8B0000', armor: 5, bounty: 25, description: 'Armored' },
+            fast: { health: 20, speed: 1.8, radius: 6, color: '#FF6347', armor: 0, bounty: 15, description: 'Fast' },
+            elite: { health: 90, speed: 0.7, radius: 14, color: '#4B0000', armor: 8, bounty: 50, description: 'Elite' },
+            spectral: { health: 25, speed: 1.2, radius: 7, color: '#DC143C', armor: 0, bounty: 20, description: 'Spectral' }
         };
 
         const stat = stats[type] || stats.basic;
-        this.health = stat.health;
-        this.maxHealth = stat.health;
-        this.speed = stat.speed;
+        this.health = stat.health + (waveNumber * 2);
+        this.maxHealth = this.health;
+        this.speed = stat.speed + (waveNumber * 0.05);
         this.radius = stat.radius;
         this.color = stat.color;
-        this.armor = stat.armor;
-        this.bounty = stat.bounty;
+        this.armor = stat.armor + waveNumber;
+        this.bounty = stat.bounty + (waveNumber * 2);
         
         this.rotation = 0;
-        this.wobbleOffset = Math.random() * Math.PI * 2;
-        this.wobbleSpeed = 0.05;
         this.stunTime = 0;
+        this.burnDuration = 0;
+        this.slowDuration = 0;
+        this.slowAmount = 0;
+        this.damageFlash = 0;
     }
 
     update() {
@@ -91,7 +154,17 @@ class Enemy {
         const targetPoint = this.path[this.pathIndex + 1];
         const direction = this.position.direction(targetPoint);
         
-        const actualSpeed = this.speed * (this.stunTime > 0 ? 0 : 1);
+        let speedMultiplier = 1;
+        if (this.slowDuration > 0) {
+            speedMultiplier = this.slowAmount;
+            this.slowDuration--;
+        }
+
+        if (this.burnDuration > 0) {
+            this.burnDuration--;
+        }
+
+        const actualSpeed = this.speed * speedMultiplier;
         this.position.x += direction.x * actualSpeed;
         this.position.y += direction.y * actualSpeed;
 
@@ -99,7 +172,8 @@ class Enemy {
             this.pathIndex++;
         }
 
-        this.rotation += 0.1;
+        this.rotation += 0.15;
+        if (this.damageFlash > 0) this.damageFlash--;
         return true;
     }
 
@@ -108,76 +182,129 @@ class Enemy {
         ctx.translate(this.position.x, this.position.y);
         ctx.rotate(this.rotation);
 
-        // Draw outer shell
-        ctx.fillStyle = this.color;
+        // Draw burn effect
+        if (this.burnDuration > 0) {
+            ctx.fillStyle = '#FF4500';
+            ctx.globalAlpha = 0.4;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius + 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        // Main body
+        ctx.fillStyle = this.damageFlash > 0 ? '#FFFFFF' : this.color;
         ctx.beginPath();
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw gear details
+        // Detailed gears
         ctx.strokeStyle = '#F5E6D3';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            const x = Math.cos(angle) * (this.radius - 2);
-            const y = Math.sin(angle) * (this.radius - 2);
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const x = Math.cos(angle) * (this.radius - 1.5);
+            const y = Math.sin(angle) * (this.radius - 1.5);
             ctx.beginPath();
-            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Inner connectors
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(x * 0.7, y * 0.7);
             ctx.stroke();
         }
 
-        // Draw center cog
+        // Center complex
         ctx.fillStyle = '#F5E6D3';
         ctx.beginPath();
-        ctx.arc(0, 0, this.radius * 0.4, 0, Math.PI * 2);
+        ctx.arc(0, 0, this.radius * 0.35, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw eye glow for spectral type
+        // Inner core
+        ctx.fillStyle = '#DC143C';
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Spectral effects
         if (this.type === 'spectral') {
             ctx.fillStyle = '#FF0000';
-            ctx.globalAlpha = 0.7;
-            ctx.beginPath();
-            ctx.arc(-this.radius * 0.3, -this.radius * 0.2, 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(this.radius * 0.3, -this.radius * 0.2, 2, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 100) * 0.2;
+            for (let i = 0; i < 3; i++) {
+                const angle = (i / 3) * Math.PI * 2 + Date.now() / 1000;
+                const x = Math.cos(angle) * this.radius * 0.5;
+                const y = Math.sin(angle) * this.radius * 0.5;
+                ctx.beginPath();
+                ctx.arc(x, y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
             ctx.globalAlpha = 1;
         }
 
         ctx.restore();
 
-        // Draw glow
+        // Environmental effects
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.3;
+        ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 200) * 0.1;
         ctx.beginPath();
         ctx.arc(this.position.x, this.position.y, this.radius + 4, 0, Math.PI * 2);
         ctx.stroke();
         ctx.globalAlpha = 1;
 
-        // Draw health bar
-        const barWidth = this.radius * 2;
-        const barHeight = 4;
+        // Health bar
+        const barWidth = this.radius * 2.2;
+        const barHeight = 5;
         ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(this.position.x - barWidth / 2, this.position.y - this.radius - 10, barWidth, barHeight);
-        ctx.fillStyle = '#DC143C';
-        ctx.fillRect(this.position.x - barWidth / 2, this.position.y - this.radius - 10, (this.health / this.maxHealth) * barWidth, barHeight);
+        ctx.fillRect(this.position.x - barWidth / 2, this.position.y - this.radius - 12, barWidth, barHeight);
+        
+        // Health gradient
+        const healthPercent = this.health / this.maxHealth;
+        const healthColor = healthPercent > 0.5 ? '#00FF00' : healthPercent > 0.25 ? '#FFD700' : '#FF0000';
+        ctx.fillStyle = healthColor;
+        ctx.fillRect(this.position.x - barWidth / 2, this.position.y - this.radius - 12, healthPercent * barWidth, barHeight);
+        
+        // Health border
+        ctx.strokeStyle = '#F5E6D3';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.position.x - barWidth / 2, this.position.y - this.radius - 12, barWidth, barHeight);
 
-        // Draw armor indicator if present
+        // Type indicator
         if (this.armor > 0) {
             ctx.fillStyle = '#D2B48C';
-            ctx.font = 'bold 8px Courier New';
+            ctx.font = 'bold 9px Courier New';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('⚔', this.position.x, this.position.y - this.radius - 16);
+            ctx.fillText('⚔', this.position.x, this.position.y - this.radius - 20);
+        }
+
+        if (this.burnDuration > 0) {
+            ctx.fillStyle = '#FF4500';
+            ctx.fillText('🔥', this.position.x + 8, this.position.y - this.radius - 20);
         }
     }
 
-    takeDamage(amount) {
+    takeDamage(amount, isCritical = false) {
         const actualDamage = Math.max(1, amount - this.armor);
         this.health -= actualDamage;
+        this.damageFlash = 10;
+        
+        if (isCritical) {
+            this.damageFlash = 15;
+        }
+        
         return this.health <= 0;
+    }
+
+    applyBurn(duration) {
+        this.burnDuration = Math.max(this.burnDuration, duration);
+    }
+
+    applySlow(duration, amount) {
+        this.slowDuration = Math.max(this.slowDuration, duration);
+        this.slowAmount = amount;
     }
 
     stun(duration) {
@@ -185,6 +312,7 @@ class Enemy {
     }
 }
 
+// Advanced projectile system
 class Projectile {
     constructor(x, y, target, damage, speed = 3, type = 'bullet') {
         this.position = new Vector2(x, y);
@@ -196,6 +324,10 @@ class Projectile {
         this.type = type;
         this.trail = [];
         this.rotation = 0;
+        this.isCritical = Math.random() < 0.15; // 15% critical chance
+        if (this.isCritical) {
+            this.damage *= 1.5;
+        }
     }
 
     update() {
@@ -207,11 +339,10 @@ class Projectile {
         this.position.x += direction.x * this.speed;
         this.position.y += direction.y * this.speed;
 
-        // Add trail
         this.trail.push(new Vector2(this.position.x, this.position.y));
-        if (this.trail.length > 8) this.trail.shift();
+        if (this.trail.length > 12) this.trail.shift();
 
-        this.rotation += 0.2;
+        this.rotation += 0.25;
 
         if (this.position.distance(this.target.position) < this.radius + this.target.radius) {
             return false;
@@ -221,72 +352,106 @@ class Projectile {
     }
 
     draw(ctx) {
-        // Draw trail
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.3;
-        ctx.beginPath();
-        if (this.trail.length > 0) {
-            ctx.moveTo(this.trail[0].x, this.trail[0].y);
-            for (let i = 1; i < this.trail.length; i++) {
-                ctx.lineTo(this.trail[i].x, this.trail[i].y);
-            }
+        // Trail effects
+        ctx.globalAlpha = 0.2;
+        for (let i = 0; i < this.trail.length - 1; i++) {
+            const alpha = i / this.trail.length;
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 1.5 + alpha * 1;
+            ctx.globalAlpha = alpha * 0.3;
+            ctx.beginPath();
+            ctx.moveTo(this.trail[i].x, this.trail[i].y);
+            ctx.lineTo(this.trail[i + 1].x, this.trail[i + 1].y);
+            ctx.stroke();
         }
-        ctx.stroke();
         ctx.globalAlpha = 1;
 
-        // Draw projectile
         ctx.save();
         ctx.translate(this.position.x, this.position.y);
         ctx.rotate(this.rotation);
 
         if (this.type === 'bullet') {
+            // Bullet glow
+            if (this.isCritical) {
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius + 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
             ctx.fillStyle = this.color;
             ctx.beginPath();
             ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.strokeStyle = '#DC143C';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.arc(0, 0, this.radius + 2, 0, Math.PI * 2);
             ctx.stroke();
-        } else if (this.type === 'tesla') {
-            // Draw lightning bolt shape
-            ctx.strokeStyle = '#FFD700';
-            ctx.lineWidth = 2;
+
+            // Inner detail
+            ctx.fillStyle = '#DC143C';
             ctx.beginPath();
-            ctx.moveTo(0, -this.radius * 2);
-            ctx.lineTo(-this.radius, 0);
-            ctx.lineTo(-this.radius * 0.5, this.radius);
-            ctx.lineTo(this.radius, this.radius * 0.5);
-            ctx.lineTo(this.radius * 0.5, -this.radius);
-            ctx.lineTo(0, -this.radius * 2);
+            ctx.arc(-this.radius * 0.3, 0, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (this.type === 'tesla') {
+            // Lightning with glow
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 10;
+
+            ctx.strokeStyle = '#FFFF00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, -this.radius * 2.5);
+            ctx.lineTo(-this.radius * 0.8, -this.radius * 0.5);
+            ctx.lineTo(-this.radius * 0.3, this.radius * 0.8);
+            ctx.lineTo(this.radius * 0.7, this.radius * 0.2);
+            ctx.lineTo(this.radius * 0.2, -this.radius * 1.5);
+            ctx.lineTo(0, -this.radius * 2.5);
             ctx.stroke();
+
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.shadowColor = 'transparent';
         } else if (this.type === 'spike') {
-            // Draw spike
             ctx.fillStyle = '#8B0000';
             ctx.beginPath();
-            ctx.moveTo(0, -this.radius * 2);
-            ctx.lineTo(-this.radius, this.radius * 1.5);
-            ctx.lineTo(this.radius, this.radius * 1.5);
+            ctx.moveTo(0, -this.radius * 2.2);
+            ctx.lineTo(-this.radius * 1.2, this.radius * 1.8);
+            ctx.lineTo(this.radius * 1.2, this.radius * 1.8);
             ctx.closePath();
             ctx.fill();
+
+            ctx.strokeStyle = '#D2B48C';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Ridge
+            ctx.strokeStyle = '#F5E6D3';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(0, -this.radius * 2.2);
+            ctx.lineTo(0, this.radius * 1.8);
+            ctx.stroke();
         }
 
         ctx.restore();
     }
 }
 
+// Ultra-detailed tower system
 class Tower {
     constructor(x, y, type = 'gun') {
         this.position = new Vector2(x, y);
         this.type = type;
+        this.builtFrame = 0;
         
         const stats = {
-            gun: { range: 120, damage: 15, fireRate: 30, cost: 50 },
-            tesla: { range: 150, damage: 10, fireRate: 40, cost: 75 },
-            spike: { range: 80, damage: 25, fireRate: 20, cost: 40 }
+            gun: { range: 120, damage: 15, fireRate: 30, cost: 50, specialEffect: 'none' },
+            tesla: { range: 150, damage: 10, fireRate: 40, cost: 75, specialEffect: 'slow' },
+            spike: { range: 80, damage: 25, fireRate: 20, cost: 40, specialEffect: 'crit' }
         };
 
         const stat = stats[type] || stats.gun;
@@ -294,52 +459,115 @@ class Tower {
         this.damage = stat.damage;
         this.fireRate = stat.fireRate;
         this.cost = stat.cost;
+        this.specialEffect = stat.specialEffect;
         this.cooldown = 0;
         this.radius = 16;
         this.level = 1;
         this.kills = 0;
+        this.totalDamage = 0;
         this.rotation = 0;
+        this.pistonExtension = 0;
+        this.pistonSpeed = 0.08;
     }
 
     draw(ctx) {
         ctx.save();
         ctx.translate(this.position.x, this.position.y);
 
-        // Draw tower base
+        // Base platform
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius + 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Main body
         ctx.fillStyle = '#8B0000';
         ctx.beginPath();
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw rotating turret
+        // Internal mechanisms
+        ctx.strokeStyle = '#D2B48C';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.5;
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(angle) * this.radius * 0.7, Math.sin(angle) * this.radius * 0.7);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        // Rotating turret
         ctx.rotate(this.rotation);
+        
+        // Main barrel
         ctx.fillStyle = '#DC143C';
-        ctx.fillRect(-4, -this.radius - 4, 8, this.radius + 4);
+        ctx.fillRect(-4, -this.radius - 6, 8, this.radius + 6);
+
+        // Piston
+        this.pistonExtension = (Math.sin(Date.now() / 100) + 1) / 2;
+        ctx.fillStyle = '#FFD700';
+        const pistonLength = this.pistonExtension * 4;
+        ctx.fillRect(-2, -this.radius - 12 - pistonLength, 4, 6 + pistonLength);
+
+        // Barrel detail
+        ctx.strokeStyle = '#F5E6D3';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-3, -this.radius - 6);
+        ctx.lineTo(-3, -this.radius - 8);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(3, -this.radius - 6);
+        ctx.lineTo(3, -this.radius - 8);
+        ctx.stroke();
 
         ctx.restore();
 
-        // Draw tower indicator
+        // Base ring
         ctx.strokeStyle = '#DC143C';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Draw level indicator
-        ctx.fillStyle = '#F5E6D3';
-        ctx.font = 'bold 10px Courier New';
+        // Level badge
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(this.position.x + this.radius - 4, this.position.y - this.radius + 4, 5, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 8px Courier New';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        let symbol = this.type === 'gun' ? '⚙' : this.type === 'tesla' ? '⚡' : '▲';
+        ctx.fillText(this.level, this.position.x + this.radius - 4, this.position.y - this.radius + 4);
+
+        // Tower symbol
+        ctx.fillStyle = '#F5E6D3';
+        ctx.font = 'bold 14px Courier New';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const symbol = this.type === 'gun' ? '⚙' : this.type === 'tesla' ? '⚡' : '▲';
         ctx.fillText(symbol, this.position.x, this.position.y);
 
-        // Draw range indicator (faint)
+        // Range indicator (shows when ready)
         if (this.cooldown <= 0) {
             ctx.strokeStyle = '#F5E6D3';
             ctx.lineWidth = 1;
-            ctx.globalAlpha = 0.15;
+            ctx.globalAlpha = 0.08;
             ctx.beginPath();
             ctx.arc(this.position.x, this.position.y, this.range, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            // Ready indicator
+            ctx.fillStyle = '#00FF00';
+            ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.arc(this.position.x, this.position.y, this.radius + 6, 0, Math.PI * 2);
             ctx.stroke();
             ctx.globalAlpha = 1;
         }
@@ -349,7 +577,8 @@ class Tower {
         if (this.cooldown > 0) {
             this.cooldown--;
         }
-        this.rotation += 0.02;
+        this.rotation += 0.025;
+        this.builtFrame++;
     }
 
     canShoot() {
@@ -363,17 +592,21 @@ class Tower {
     getTargetsInRange(enemies) {
         return enemies.filter(enemy => 
             this.position.distance(enemy.position) < this.range
-        );
+        ).sort((a, b) => {
+            // Prioritize enemies further along path
+            return b.pathIndex - a.pathIndex;
+        });
     }
 
     upgrade() {
         this.level++;
-        this.damage *= 1.2;
-        this.fireRate = Math.max(5, this.fireRate - 2);
-        this.range *= 1.15;
+        this.damage *= 1.25;
+        this.fireRate = Math.max(5, this.fireRate - 3);
+        this.range *= 1.1;
     }
 }
 
+// Main game class
 class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -382,9 +615,9 @@ class Game {
         this.height = this.canvas.height = window.innerHeight - 20;
 
         // Game state
-        this.gears = 100;
-        this.steam = 50;
-        this.lives = 20;
+        this.gears = 150;
+        this.steam = 75;
+        this.lives = 25;
         this.wave = 1;
         this.gameOver = false;
         this.selectedTower = null;
@@ -395,6 +628,7 @@ class Game {
         this.enemies = [];
         this.projectiles = [];
         this.particles = [];
+        this.damageNumbers = [];
         this.path = this.generatePath();
         this.waveTimer = 0;
         this.waveDelay = 120;
@@ -402,6 +636,8 @@ class Game {
         this.enemiesPerWave = 5;
         this.waveActive = false;
         this.frameCount = 0;
+        this.totalEnemiesSpawned = 0;
+        this.totalEnemiesKilled = 0;
 
         this.setupEventListeners();
         this.gameLoop();
@@ -410,9 +646,10 @@ class Game {
     generatePath() {
         return [
             new Vector2(0, this.height / 2),
-            new Vector2(this.width * 0.25, this.height * 0.3),
-            new Vector2(this.width * 0.5, this.height * 0.7),
-            new Vector2(this.width * 0.75, this.height * 0.2),
+            new Vector2(this.width * 0.2, this.height * 0.25),
+            new Vector2(this.width * 0.4, this.height * 0.75),
+            new Vector2(this.width * 0.6, this.height * 0.35),
+            new Vector2(this.width * 0.8, this.height * 0.65),
             new Vector2(this.width, this.height / 2)
         ];
     }
@@ -421,9 +658,13 @@ class Game {
         this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
         document.querySelectorAll('.tower-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                this.selectedTower = e.target.dataset.tower;
+                let target = e.target;
+                while (!target.classList.contains('tower-btn')) {
+                    target = target.parentElement;
+                }
+                this.selectedTower = target.dataset.tower;
                 document.querySelectorAll('.tower-btn').forEach(b => b.classList.remove('selected'));
-                e.target.classList.add('selected');
+                target.classList.add('selected');
             });
         });
         document.getElementById('restartBtn').addEventListener('click', () => location.reload());
@@ -438,20 +679,20 @@ class Game {
         const y = e.clientY - rect.top;
 
         if (!this.selectedTower) {
-            alert('Select a tower first!');
             return;
         }
 
-        const towerTypes = { gun: 'gun', tesla: 'tesla', spike: 'spike' };
-        const tower = new Tower(x, y, towerTypes[this.selectedTower]);
+        const towerMap = { 'tower-gun': 'gun', 'tower-tesla': 'tesla', 'tower-spike': 'spike' };
+        const towerType = towerMap[this.selectedTower];
+        if (!towerType) return;
+
+        const tower = new Tower(x, y, towerType);
 
         if (this.gears >= tower.cost) {
             this.towers.push(tower);
             this.gears -= tower.cost;
-            this.createExplosion(x, y, '#DC143C', 10);
+            this.createExplosion(x, y, '#DC143C', 25, 'spark');
             this.updateUI();
-        } else {
-            alert('Not enough gears!');
         }
     }
 
@@ -460,13 +701,13 @@ class Game {
         this.height = this.canvas.height = window.innerHeight - 20;
     }
 
-    createExplosion(x, y, color, count = 20) {
+    createExplosion(x, y, color, count = 20, particleType = 'normal') {
         for (let i = 0; i < count; i++) {
             const angle = (i / count) * Math.PI * 2;
-            const speed = 2 + Math.random() * 2;
+            const speed = 2 + Math.random() * 3;
             const vx = Math.cos(angle) * speed;
             const vy = Math.sin(angle) * speed;
-            this.particles.push(new Particle(x, y, vx, vy, color, 30));
+            this.particles.push(new Particle(x, y, vx, vy, color, 40, particleType));
         }
     }
 
@@ -491,40 +732,40 @@ class Game {
             }
         }
 
-        // Spawn enemies
+        // Spawn enemies with variety
         if (this.waveActive && this.enemySpawnCounter < this.enemiesPerWave) {
-            if (this.waveTimer % 30 === 0) {
+            if (this.waveTimer % 25 === 0) {
                 const types = ['basic', 'armored', 'fast', 'spectral'];
                 let type = types[Math.floor(Math.random() * types.length)];
                 
-                // Elite enemies on later waves
-                if (this.wave > 5 && Math.random() < 0.2) {
-                    type = 'elite';
-                }
+                if (this.wave > 3 && Math.random() < 0.15) type = 'elite';
+                if (this.wave > 8 && Math.random() < 0.1) type = types[Math.floor(Math.random() * types.length)];
                 
-                this.enemies.push(new Enemy(this.path, type));
+                this.enemies.push(new Enemy(this.path, type, this.wave));
+                this.totalEnemiesSpawned++;
                 this.enemySpawnCounter++;
             }
             this.waveTimer++;
         }
 
+        // Wave completion
         if (this.waveActive && this.enemies.length === 0 && this.enemySpawnCounter >= this.enemiesPerWave) {
             this.waveActive = false;
             this.waveTimer = 0;
             this.wave++;
-            this.enemiesPerWave += 2;
-            this.gears += 50;
-            this.steam += 20;
+            this.enemiesPerWave = Math.min(20, 5 + Math.floor(this.wave * 1.5));
+            this.gears += 75 + (this.wave * 10);
+            this.steam += 30 + (this.wave * 5);
         }
 
         // Update towers
         this.towers.forEach(tower => tower.update());
 
-        // Update and draw enemies
+        // Update and remove escaped enemies
         this.enemies = this.enemies.filter(enemy => {
             if (!enemy.update()) {
                 this.lives--;
-                this.createExplosion(enemy.position.x, enemy.position.y, '#FF6347', 15);
+                this.createExplosion(enemy.position.x, enemy.position.y, '#FF6347', 20, 'blood');
                 return false;
             }
             return true;
@@ -537,8 +778,9 @@ class Game {
                 if (targets.length > 0) {
                     const target = targets[0];
                     const projectileType = tower.type === 'gun' ? 'bullet' : tower.type === 'tesla' ? 'tesla' : 'spike';
-                    this.projectiles.push(new Projectile(tower.position.x, tower.position.y, target, tower.damage, 3, projectileType));
+                    this.projectiles.push(new Projectile(tower.position.x, tower.position.y, target, tower.damage, 3.5, projectileType));
                     tower.shoot();
+                    this.createExplosion(tower.position.x, tower.position.y, '#FFD700', 3, 'spark');
                 }
             }
         });
@@ -546,21 +788,31 @@ class Game {
         // Update projectiles
         this.projectiles = this.projectiles.filter(projectile => {
             if (!projectile.update()) {
-                const killed = projectile.target.takeDamage(projectile.damage);
+                const isCritical = projectile.isCritical;
+                const killed = projectile.target.takeDamage(projectile.damage, isCritical);
                 
-                this.createExplosion(projectile.target.position.x, projectile.target.position.y, '#FFD700', 8);
+                this.createExplosion(projectile.target.position.x, projectile.target.position.y, '#FFD700', 12, 'spark');
+                this.damageNumbers.push(new DamageNumber(projectile.target.position.x, projectile.target.position.y, Math.floor(projectile.damage), isCritical));
+                
+                // Apply special effects
+                const tower = this.towers.find(t => t.position.distance(projectile.position) < t.range * 1.1);
+                if (tower) {
+                    tower.totalDamage += projectile.damage;
+                    if (tower.specialEffect === 'slow' && !killed) {
+                        projectile.target.applySlow(60, 0.3);
+                    } else if (tower.specialEffect === 'crit' && isCritical && !killed) {
+                        projectile.target.applyBurn(120);
+                    }
+                }
                 
                 if (killed) {
                     this.gears += projectile.target.bounty;
-                    this.steam += Math.floor(projectile.target.bounty / 2);
-                    this.score += projectile.target.bounty;
+                    this.steam += Math.floor(projectile.target.bounty * 0.6);
+                    this.score += projectile.target.bounty * (projectile.isCritical ? 2 : 1);
+                    this.totalEnemiesKilled++;
                     
-                    // Find tower that fired this projectile and increment kills
-                    for (let tower of this.towers) {
-                        if (tower.position.distance(projectile.position) < tower.range) {
-                            tower.kills++;
-                            break;
-                        }
+                    if (tower) {
+                        tower.kills++;
                     }
                     
                     this.enemies = this.enemies.filter(e => e !== projectile.target);
@@ -570,8 +822,9 @@ class Game {
             return true;
         });
 
-        // Update particles
+        // Update particles and damage numbers
         this.particles = this.particles.filter(p => p.update());
+        this.damageNumbers = this.damageNumbers.filter(d => d.update());
 
         if (this.lives <= 0) {
             this.gameOver = true;
@@ -582,34 +835,42 @@ class Game {
     }
 
     draw() {
-        // Clear canvas
-        this.ctx.fillStyle = '#0a0a0a';
+        // Gradient background
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
+        gradient.addColorStop(0, '#0a0a0a');
+        gradient.addColorStop(0.5, '#1a1a1a');
+        gradient.addColorStop(1, '#0a0a0a');
+        this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.width, this.height);
 
-        // Draw animated background grid
+        // Animated grid
         this.ctx.strokeStyle = '#8B0000';
-        this.ctx.lineWidth = 1;
-        this.ctx.globalAlpha = 0.05;
+        this.ctx.lineWidth = 0.5;
+        this.ctx.globalAlpha = 0.04;
         const gridSize = 40;
-        for (let x = 0; x < this.width; x += gridSize) {
+        const offset = (this.frameCount % 40) * 1;
+        for (let x = -gridSize; x < this.width; x += gridSize) {
             this.ctx.beginPath();
-            this.ctx.moveTo(x, 0);
-            this.ctx.lineTo(x, this.height);
+            this.ctx.moveTo(x + offset, 0);
+            this.ctx.lineTo(x + offset, this.height);
             this.ctx.stroke();
         }
-        for (let y = 0; y < this.height; y += gridSize) {
+        for (let y = -gridSize; y < this.height; y += gridSize) {
             this.ctx.beginPath();
-            this.ctx.moveTo(0, y);
-            this.ctx.lineTo(this.width, y);
+            this.ctx.moveTo(0, y + offset);
+            this.ctx.lineTo(this.width, y + offset);
             this.ctx.stroke();
         }
         this.ctx.globalAlpha = 1;
 
-        // Draw path with glow
+        // Path with enhanced visuals
         this.ctx.shadowColor = '#DC143C';
-        this.ctx.shadowBlur = 20;
+        this.ctx.shadowBlur = 30;
+        this.ctx.shadowOffsetX = 2;
+        this.ctx.shadowOffsetY = 2;
+        
         this.ctx.strokeStyle = '#D2B48C';
-        this.ctx.lineWidth = 40;
+        this.ctx.lineWidth = 45;
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
         this.ctx.beginPath();
@@ -618,12 +879,13 @@ class Game {
             this.ctx.lineTo(this.path[i].x, this.path[i].y);
         }
         this.ctx.stroke();
+
         this.ctx.shadowColor = 'transparent';
 
-        // Draw path outline
+        // Path center line
         this.ctx.strokeStyle = '#8B0000';
-        this.ctx.lineWidth = 42;
-        this.ctx.globalAlpha = 0.2;
+        this.ctx.lineWidth = 3;
+        this.ctx.globalAlpha = 0.5;
         this.ctx.beginPath();
         this.ctx.moveTo(this.path[0].x, this.path[0].y);
         for (let i = 1; i < this.path.length; i++) {
@@ -632,28 +894,25 @@ class Game {
         this.ctx.stroke();
         this.ctx.globalAlpha = 1;
 
-        // Draw towers
+        // Draw game objects
         this.towers.forEach(tower => tower.draw(this.ctx));
-
-        // Draw enemies
         this.enemies.forEach(enemy => enemy.draw(this.ctx));
-
-        // Draw projectiles
         this.projectiles.forEach(projectile => projectile.draw(this.ctx));
-
-        // Draw particles
         this.particles.forEach(particle => particle.draw(this.ctx));
+        this.damageNumbers.forEach(dn => dn.draw(this.ctx));
 
-        // Draw cursor preview
+        // Cursor preview
         if (this.selectedTower) {
             const towerMap = { 'tower-gun': 'gun', 'tower-tesla': 'tesla', 'tower-spike': 'spike' };
-            const towerType = towerMap[this.selectedTower] || 'gun';
-            const tower = new Tower(0, 0, towerType);
-            tower.position.x = this.lastMouseX || this.width / 2;
-            tower.position.y = this.lastMouseY || this.height / 2;
-            this.ctx.globalAlpha = 0.5;
-            tower.draw(this.ctx);
-            this.ctx.globalAlpha = 1;
+            const towerType = towerMap[this.selectedTower];
+            if (towerType) {
+                const tower = new Tower(0, 0, towerType);
+                tower.position.x = this.lastMouseX || this.width / 2;
+                tower.position.y = this.lastMouseY || this.height / 2;
+                this.ctx.globalAlpha = 0.4;
+                tower.draw(this.ctx);
+                this.ctx.globalAlpha = 1;
+            }
         }
     }
 
@@ -670,8 +929,18 @@ class Game {
         const title = document.getElementById('gameOverTitle');
         const stats = document.getElementById('gameOverStats');
         
-        title.textContent = this.lives > 0 ? 'Victory!' : 'Defeat!';
-        stats.textContent = `Score: ${this.score}\nWave Reached: ${this.wave}\nTowers Built: ${this.towers.length}\nEnemies Destroyed: ${(this.wave * this.enemiesPerWave) - this.enemies.length}`;
+        title.textContent = this.lives > 0 ? '🏆 Victory!' : '💀 Defeat!';
+        const totalDamage = this.towers.reduce((sum, t) => sum + t.totalDamage, 0);
+        const avgDPS = totalDamage / (this.frameCount / 60); // DPS calculation
+        
+        stats.innerHTML = `
+Score: ${this.score}
+Wave Reached: ${this.wave}
+Towers Built: ${this.towers.length}
+Enemies Defeated: ${this.totalEnemiesKilled}/${this.totalEnemiesSpawned}
+Total Damage: ${Math.floor(totalDamage)}
+Total DPS: ${avgDPS.toFixed(2)}
+        `.trim();
         
         screen.classList.remove('hidden');
     }
@@ -683,12 +952,12 @@ class Game {
     }
 }
 
-// Start game
+// Initialize game
 window.addEventListener('load', () => {
     window.game = new Game();
 });
 
-// Track mouse for cursor preview
+// Track mouse
 document.addEventListener('mousemove', (e) => {
     const game = window.game;
     if (game) {
